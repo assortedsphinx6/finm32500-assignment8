@@ -24,6 +24,7 @@ def run_strategy():
     shm_name = os.environ.get("SHM_NAME")
     spb = SharedPriceBook(symbols=SYMBOLS, name=shm_name, create=False)
     print(f"[Strategy] SHM={shm_name}")
+    open("data/shm_name.txt", "w").write(spb.name)
 
     news_conn = socket.create_connection((HOST, NEWS_PORT))
     order_conn = socket.create_connection((HOST, ORDER_PORT))

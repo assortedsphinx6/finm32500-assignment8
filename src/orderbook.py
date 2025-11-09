@@ -1,5 +1,6 @@
 import socket
 import time
+import os
 
 MESSAGE_DELIMITER = b"*"
 HOST = "127.0.0.1"
@@ -25,6 +26,11 @@ def _recv_frames(conn):
 def run_orderbook():
     spb = SharedPriceBook(symbols=SYMBOLS, create=True)
     print(f"[OrderBook] SharedMemory name: {spb.name}")
+    os.makedirs("data", exist_ok=True)
+    with open("data/shm_name.txt", "w") as f:
+        f.write(spb.name)
+        f.flush()
+        os.fsync(f.fileno())
     print(f"[OrderBook] Symbols: {', '.join(spb.symbols)}")
 
     while True:
