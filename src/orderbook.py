@@ -75,3 +75,6 @@ def run_orderbook():
                 f.write(f"[OrderBook] Connection lost: {e}. Retrying …\n")
             time.sleep(0.5)
             downtime_duration += time.time() - dt_start
+
+if __name__ == "__main__":
+    run_orderbook()

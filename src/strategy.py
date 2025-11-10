@@ -25,7 +25,12 @@ def _ma(d, k):
     return sum(list(d)[-k:]) / k if len(d) >= k else None
 
 def run_strategy():
-    shm_name = os.environ.get("SHM_NAME")
+    shm_file = "data/shm_name.txt"
+    if os.path.exists(shm_file):
+        shm_name = open(shm_file).read().strip()
+    else:
+        raise RuntimeError("Shared memory name file not found. Run orderbook first.")
+
     spb = SharedPriceBook(symbols=SYMBOLS, name=shm_name, create=False)
     os.makedirs("data", exist_ok=True)
     open("data/shm_name.txt", "w").write(spb.name)
@@ -134,3 +139,5 @@ def run_strategy():
                 f"News drops: {news_connection_drops} | "
                 f"Order drops: {order_connection_drops}\n"
             )
+if __name__ == "__main__":
+    run_strategy()
