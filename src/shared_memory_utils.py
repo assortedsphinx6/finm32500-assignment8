@@ -1,7 +1,6 @@
 from multiprocessing import shared_memory, Lock
 import numpy as np
 
-
 SYMBOLS = ["AAPL", "MSFT", "GOOG", "AMZN"]
 SYMBOL_BYTES = 8  
 
@@ -11,10 +10,12 @@ class SharedPriceBook:
         self.n = len(self.symbols)
         self._writer_lock = Lock() 
 
+        # header+symbols+prices+timestamps
         header = 16
         symtab = SYMBOL_BYTES * self.n
-        prices = 8 * self.n  
-        total = header + symtab + prices
+        prices = 8 * self.n
+        timestamps = 8 * self.n
+        total = header + symtab + prices + timestamps
 
         if create and name is None:
             self.shm = shared_memory.SharedMemory(create=True, size=total)
@@ -28,6 +29,7 @@ class SharedPriceBook:
                 raw += b"\x00" * (SYMBOL_BYTES - len(raw))
                 self._buf[base + i*SYMBOL_BYTES : base + (i+1)*SYMBOL_BYTES] = raw
             self.prices_view()[:] = np.nan
+            self.timestamps_view()[:] = 0.0
         else:
             self.shm = shared_memory.SharedMemory(name=name)
             self.name = name
@@ -50,19 +52,27 @@ class SharedPriceBook:
         offset = 16 + SYMBOL_BYTES * self.n
         return np.ndarray((self.n,), dtype=np.float64, buffer=self._buf, offset=offset)
 
+    def timestamps_view(self):
+        offset = 16 + SYMBOL_BYTES * self.n + 8*self.n
+        return np.ndarray((self.n,), dtype=np.float64, buffer=self._buf, offset=offset)
 
-    def update(self, symbol: str, price: float):
+    def update(self, symbol: str, price: float, timestamp=None):
+        timestamp = timestamp or 0.0
         i = self.idx[symbol]
         with self._writer_lock:
             seq = self._seq_view()
             seq[0] += 1              
             self.prices_view()[i] = float(price)
+            self.timestamps_view()[i] = float(timestamp)
             seq[0] += 1               
+
+    def read(self, symbol):
+        i = self.idx[symbol]
+        return float(self.prices_view()[i]), float(self.timestamps_view()[i])
 
     def snapshot_consistent(self):
         seq0 = int(self._seq_view()[0])
-        if seq0 % 2 == 1:
-            return None
+        if seq0 % 2 == 1: return None
         snap = self.prices_view().copy()
         seq1 = int(self._seq_view()[0])
         if seq0 == seq1 and seq1 % 2 == 0:
